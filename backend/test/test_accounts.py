@@ -2,6 +2,8 @@
 # Import pytest for marking async tests
 import pytest
 
+import pytest
+
 # Test the root endpoint to ensure the API is running
 @pytest.mark.asyncio
 async def test_read_root(async_client):
@@ -9,34 +11,50 @@ async def test_read_root(async_client):
     assert response.status_code == 200  # Should return HTTP 200 OK
     assert response.json()["message"].startswith("Hello world")  # Check welcome message
 
-# Test adding a new account via the /accounts/ endpoint
-# Note: Uses a global variable to share the created account ID with the delete test
-# In production, prefer using a fixture to share state between tests
+
+
+# Test adding and deleting an account in a single test for reliable state sharing
 @pytest.mark.asyncio
-async def test_add_account(async_client):
+async def test_add_and_delete_account(async_client):
+    # Use unique values for each test run
+    from uuid import uuid4
+    unique_id = str(uuid4())
     payload = {
-        "OAuthID": "abc123",
-        "email": "test@example.com",
+        "OAuthID": unique_id,
+        "email": f"test_{unique_id}@example.com",
         "name": "Test User"
     }
+    # Add account
     response = await async_client.post("/accounts/", json=payload)
     assert response.status_code == 200  # Should return HTTP 200 OK
     data = response.json()
     assert data["email"] == payload["email"]  # Email should match input
     assert "id" in data  # Response should include the new account's ID
+    account_id = data["id"]
 
-    # Save the account ID for deletion in the next test
-    global created_account_id
-    created_account_id = data["id"]
+    # Test GET /accounts/{account_id}
+    get_response = await async_client.get(f"/accounts/{account_id}")
+    assert get_response.status_code == 200
+    get_data = get_response.json()
+    assert get_data["id"] == account_id
+    assert get_data["email"] == payload["email"]
 
-# Test deleting the account created in the previous test
-@pytest.mark.asyncio
-async def test_delete_account(async_client):
-    # Delete the account by ID
-    response = await async_client.delete(f"/accounts/{created_account_id}")
-    assert response.status_code == 200  # Should return HTTP 200 OK
-    assert response.json()["detail"] == "Account deleted"
+    # Test GET /accounts/
+    list_response = await async_client.get("/accounts/")
+    assert list_response.status_code == 200
+    accounts = list_response.json()
+    assert any(acc["id"] == account_id for acc in accounts)
+
+    # Test GET /health
+    health_response = await async_client.get("/health")
+    assert health_response.status_code == 200
+    assert health_response.json()["status"] == "ok"
+
+    # Delete the account
+    del_response = await async_client.delete(f"/accounts/{account_id}")
+    assert del_response.status_code == 200  # Should return HTTP 200 OK
+    assert del_response.json()["detail"] == "Account deleted"
 
     # Try to delete again - should return 404 Not Found
-    response = await async_client.delete(f"/accounts/{created_account_id}")
-    assert response.status_code == 404
+    del_response2 = await async_client.delete(f"/accounts/{account_id}")
+    assert del_response2.status_code == 404

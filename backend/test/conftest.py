@@ -12,8 +12,9 @@ from app.main import app
 from app.infrastructure.db.base import Base
 from app.infrastructure.db.session import get_db
 
-# Use an in-memory SQLite database for isolated, fast tests
-TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
+
+# Use a PostgreSQL test database for integration tests
+TEST_DATABASE_URL = "postgresql+asyncpg://sheepdog:sheepdogs123@db:5432/MeterDB"
 
 # Create a separate async engine and sessionmaker for the test DB
 engine_test = create_async_engine(TEST_DATABASE_URL, echo=False)
@@ -27,8 +28,10 @@ async def override_get_db():
 # Apply the override so all FastAPI endpoints use the test DB during tests
 app.dependency_overrides[get_db] = override_get_db
 
+
 # Automatically create and destroy the test DB schema for each test module
-@pytest.fixture(scope="module", autouse=True)
+# Use @pytest_asyncio.fixture for async compatibility
+@pytest_asyncio.fixture(scope="module", autouse=True)
 async def create_test_db():
     # Create all tables at the start of the test module
     async with engine_test.begin() as conn:

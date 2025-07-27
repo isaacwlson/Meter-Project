@@ -10,13 +10,13 @@ services:
     depends_on:
       - db
     environment:
-      - DATABASE_URL=postgresql+asyncpg://sheepdog:sheeodogs123@db:5432/MeterDB
+      - DATABASE_URL=postgresql+asyncpg://sheepdog:sheepdogs123@db:5432/MeterDB
 
   db:
     image: postgres:14
     environment:
       POSTGRES_USER: sheepdog
-      POSTGRES_PASSWORD: sheeodogs123
+      POSTGRES_PASSWORD: sheepdogs123
       POSTGRES_DB: MeterDB
     ports:
       - "5432:5432"

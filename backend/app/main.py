@@ -84,3 +84,39 @@ async def delete_account(account_id: int, db: AsyncSession = Depends(get_db)):
     await db.delete(account)
     await db.commit()
     return {"detail": "Account deleted"}
+
+
+# Endpoint to list all accounts in the database
+@app.get("/accounts/", response_model=list)
+async def list_accounts(db: AsyncSession = Depends(get_db)):
+    """
+    Returns a list of all account profiles in the database.
+    Each account is represented as a dictionary with id, OAuthID, email, and name.
+    """
+    result = await db.execute(select(AccountProfile))
+    accounts = result.scalars().all()
+    return [{"id": acc.id, "OAuthID": acc.OAuthID, "email": acc.email, "name": acc.name} for acc in accounts]
+
+
+# Endpoint to get details for a specific account by ID
+@app.get("/accounts/{account_id}", response_model=dict)
+async def get_account(account_id: int, db: AsyncSession = Depends(get_db)):
+    """
+    Returns account details for the given account ID.
+    If the account does not exist, returns HTTP 404.
+    """
+    result = await db.execute(select(AccountProfile).where(AccountProfile.id == account_id))
+    account = result.scalar_one_or_none()
+    if not account:
+        raise HTTPException(status_code=404, detail="Account not found")
+    return {"id": account.id, "OAuthID": account.OAuthID, "email": account.email, "name": account.name}
+
+
+# Endpoint for health check to verify the API is running
+@app.get("/health")
+def health_check():
+    """
+    Simple health check endpoint.
+    Returns status 'ok' if the API is up.
+    """
+    return {"status": "ok"}

@@ -9,6 +9,8 @@ COPY requirements.txt .
 
 # Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
+RUN apt update && apt install -y postgresql-client
+
 
 # Copy the rest of your application code
 COPY . .
